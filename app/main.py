@@ -22,6 +22,9 @@ from app.agents.registry import list_agents
 from app.demo_middleware import DemoModeMiddleware
 
 
+import aiosqlite
+from app.mcp_server import MCP_USER_ID
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager for startup and shutdown events"""
@@ -31,6 +34,15 @@ async def lifespan(app: FastAPI):
 
     # Initialize database
     await init_db()
+
+    # Ensure MCP service user exists
+    async with aiosqlite.connect(settings.DATABASE_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO users (id) VALUES (?)",
+            (MCP_USER_ID,)
+        )
+        await db.commit()
+    print(f"✅ Ensured MCP service user '{MCP_USER_ID}' exists")
 
     # Check database health
     healthy = await check_db_health()
@@ -78,11 +90,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.mcp_server import app as mcp_app
+
 # Include routers
 app.include_router(auth.router)
 app.include_router(wallet.router)
 app.include_router(tasks.router)
 app.include_router(payments.router)
+
+# Mount the MCP server
+app.mount("/mcp", mcp_app)
 
 
 # Health check endpoint
