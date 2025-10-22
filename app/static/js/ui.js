@@ -175,42 +175,118 @@ async function connectWallet() {
 
 // Show mobile wallet connection options
 const showMobileWalletOptions = () => {
-    const currentUrl = getCurrentUrl();
-    const metamaskDeepLink = `https://metamask.app.link/dapp/${currentUrl.replace(/^https?:\/\//, '')}`;
+    const currentUrl = window.location.href;
+
+    // Different deep link formats for better compatibility
+    const deepLinks = {
+        // MetaMask universal link (works on iOS and Android)
+        metamask: `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}${window.location.search}`,
+        // Alternative: Custom URI scheme (older method)
+        metamaskUri: `metamask://dapp/${window.location.host}${window.location.pathname}`,
+        // Trust Wallet
+        trust: `trust://open_url?coin_id=60&url=${encodeURIComponent(currentUrl)}`,
+    };
 
     // Create modal for mobile options
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
     modal.innerHTML = `
         <div class="bg-white rounded-lg p-6 max-w-sm w-full">
-            <h3 class="text-lg font-bold mb-4">Connect Wallet</h3>
-            <p class="text-sm text-gray-600 mb-4">To use AgentBounty, you need a Web3 wallet:</p>
+            <h3 class="text-lg font-bold mb-4">📱 Connect Mobile Wallet</h3>
+            <p class="text-sm text-gray-600 mb-4">Choose how to connect:</p>
 
             <div class="space-y-3">
-                <a href="${metamaskDeepLink}"
-                   class="block w-full bg-orange-500 text-white px-4 py-3 rounded-lg text-center font-semibold hover:bg-orange-600">
-                    📱 Open in MetaMask App
-                </a>
+                <button id="open-metamask-btn"
+                        class="block w-full bg-orange-500 text-white px-4 py-3 rounded-lg text-center font-semibold hover:bg-orange-600 transition-colors">
+                    🦊 Open in MetaMask Browser
+                </button>
+
+                <button id="copy-url-btn"
+                        class="block w-full bg-purple-500 text-white px-4 py-3 rounded-lg text-center font-semibold hover:bg-purple-600 transition-colors">
+                    📋 Copy URL (Open in Wallet)
+                </button>
 
                 <a href="https://metamask.io/download/"
                    target="_blank"
-                   class="block w-full bg-blue-500 text-white px-4 py-3 rounded-lg text-center font-semibold hover:bg-blue-600">
+                   class="block w-full bg-blue-500 text-white px-4 py-3 rounded-lg text-center font-semibold hover:bg-blue-600 transition-colors">
                     📲 Install MetaMask
                 </a>
 
                 <button onclick="this.closest('.fixed').remove()"
-                        class="block w-full bg-gray-300 text-gray-700 px-4 py-3 rounded-lg text-center font-semibold hover:bg-gray-400">
+                        class="block w-full bg-gray-300 text-gray-700 px-4 py-3 rounded-lg text-center font-semibold hover:bg-gray-400 transition-colors">
                     Cancel
                 </button>
             </div>
 
-            <p class="text-xs text-gray-500 mt-4 text-center">
-                💡 If you have MetaMask installed, click "Open in MetaMask App"
-            </p>
+            <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p class="text-xs text-blue-800 font-semibold mb-1">💡 How to connect:</p>
+                <ol class="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+                    <li>Click "Open in MetaMask Browser"</li>
+                    <li>If it doesn't open, click "Copy URL"</li>
+                    <li>Open MetaMask app manually</li>
+                    <li>Paste URL in MetaMask browser (🌐 icon)</li>
+                </ol>
+            </div>
         </div>
     `;
 
     document.body.appendChild(modal);
+
+    // Handle MetaMask deep link button
+    document.getElementById('open-metamask-btn').addEventListener('click', () => {
+        console.log('Attempting to open MetaMask...');
+
+        // Try multiple methods
+        // Method 1: Universal link
+        window.location.href = deepLinks.metamask;
+
+        // Method 2: Fallback to custom URI after delay
+        setTimeout(() => {
+            window.location.href = deepLinks.metamaskUri;
+        }, 500);
+
+        // Method 3: Show instructions if nothing worked
+        setTimeout(() => {
+            const instructions = modal.querySelector('.bg-blue-50');
+            if (instructions) {
+                instructions.classList.add('animate-pulse');
+                instructions.classList.replace('bg-blue-50', 'bg-yellow-50');
+                instructions.querySelector('.text-blue-800').classList.replace('text-blue-800', 'text-yellow-800');
+                instructions.querySelector('.text-blue-700').classList.replace('text-blue-700', 'text-yellow-700');
+            }
+        }, 2000);
+    });
+
+    // Handle copy URL button
+    document.getElementById('copy-url-btn').addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(currentUrl);
+            const btn = document.getElementById('copy-url-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✅ URL Copied!';
+            btn.classList.add('bg-green-500');
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('bg-green-500');
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = currentUrl;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert('URL copied! Now open MetaMask app and paste it in the browser.');
+            } catch (err2) {
+                alert(`Copy this URL manually: ${currentUrl}`);
+            }
+            document.body.removeChild(textArea);
+        }
+    });
 
     // Close on background click
     modal.addEventListener('click', (e) => {
