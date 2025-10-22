@@ -56,6 +56,21 @@ async def connect_wallet(
     print(f"🔗 Connecting wallet for user: {user_email}")
     print(f"   Wallet: {data.wallet_address}")
 
+    # Check if demo mode
+    is_demo_user = auth0_user_id.startswith('demo|')
+
+    if is_demo_user:
+        print(f"   🎭 Demo mode detected - skipping Auth0 save")
+        # Cache wallet in session for demo mode
+        request.session['wallet_address'] = data.wallet_address.lower()
+
+        return {
+            "success": True,
+            "auth0_user_id": auth0_user_id,
+            "wallet_address": data.wallet_address.lower(),
+            "message": "Wallet connected successfully (Demo Mode)"
+        }
+
     # Verify signature (proof of wallet ownership)
     w3 = Web3()
     message = encode_defunct(text=data.message)
@@ -136,8 +151,11 @@ async def get_wallet_info(
     auth0_user_id = user.get('sub')
     wallet_address = request.session.get('wallet_address')
 
-    # If not in session, fetch from Auth0 user_metadata
-    if not wallet_address:
+    # Check if demo mode
+    is_demo_user = auth0_user_id.startswith('demo|')
+
+    # If not in session, fetch from Auth0 user_metadata (skip for demo users)
+    if not wallet_address and not is_demo_user:
         user_profile = await auth0_service.get_user_profile(auth0_user_id)
 
         if user_profile:
@@ -194,6 +212,7 @@ async def disconnect_wallet(
 
 @router.get("/history")
 async def get_wallet_history(
+    request: Request,
     user: dict = Depends(require_auth)
 ):
     """
@@ -203,6 +222,19 @@ async def get_wallet_history(
     """
 
     auth0_user_id = user.get('sub')
+
+    # Check if demo mode
+    is_demo_user = auth0_user_id.startswith('demo|')
+
+    if is_demo_user:
+        # Return demo wallet info from session
+        wallet_address = request.session.get('wallet_address')
+        return {
+            "wallet_address": wallet_address,
+            "connected_at": None,
+            "has_wallet": wallet_address is not None
+        }
+
     user_profile = await auth0_service.get_user_profile(auth0_user_id)
 
     if not user_profile:

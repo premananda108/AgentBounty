@@ -26,13 +26,17 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
 
         # If no params, check session (available after SessionMiddleware)
         if not is_demo and hasattr(request, 'session'):
-            is_demo = request.session.get('demo_mode') == True
+            try:
+                is_demo = request.session.get('demo_mode') == True
+            except:
+                is_demo = False
 
         if is_demo:
             # Activate demo mode in session
-            request.session['demo_mode'] = True
-            request.session['user'] = DEMO_USER
-            request.session['wallet_address'] = DEMO_WALLET['wallet_address']
+            if hasattr(request, 'session'):
+                request.session['demo_mode'] = True
+                request.session['user'] = DEMO_USER
+                request.session['wallet_address'] = DEMO_WALLET['wallet_address']
 
             # Intercept API requests
             path = request.url.path
@@ -43,6 +47,12 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
                 return JSONResponse({
                     "authenticated": True,
                     "user": DEMO_USER
+                })
+
+            if path == '/api/me' and method == 'GET':
+                return JSONResponse({
+                    "user": DEMO_USER,
+                    "authenticated": True
                 })
 
             # --- WALLET ENDPOINTS ---
@@ -108,7 +118,9 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
                     })
 
                 # Check payment: either payment_status=paid, or marked as paid in session
-                demo_paid_tasks = request.session.get('demo_paid_tasks', [])
+                demo_paid_tasks = []
+                if hasattr(request, 'session'):
+                    demo_paid_tasks = request.session.get('demo_paid_tasks', [])
                 is_paid = task['payment_status'] == 'paid' or task_id in demo_paid_tasks
 
                 # If not paid - return 402 with preview
@@ -157,10 +169,11 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
                     task_id = 'demo_task_002'
 
                 # Mark task as paid in session
-                if 'demo_paid_tasks' not in request.session:
-                    request.session['demo_paid_tasks'] = []
-                if task_id not in request.session['demo_paid_tasks']:
-                    request.session['demo_paid_tasks'].append(task_id)
+                if hasattr(request, 'session'):
+                    if 'demo_paid_tasks' not in request.session:
+                        request.session['demo_paid_tasks'] = []
+                    if task_id not in request.session['demo_paid_tasks']:
+                        request.session['demo_paid_tasks'].append(task_id)
 
                 # In demo mode, payment is always successful
                 return JSONResponse({
@@ -173,9 +186,10 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
             # --- EXIT DEMO ENDPOINT ---
             if path == '/api/demo/exit' and method == 'POST':
                 # Clear demo mode from session
-                request.session['demo_mode'] = False
-                request.session.pop('user', None)
-                request.session.pop('wallet_address', None)
+                if hasattr(request, 'session'):
+                    request.session['demo_mode'] = False
+                    request.session.pop('user', None)
+                    request.session.pop('wallet_address', None)
 
                 response = JSONResponse({"success": True, "message": "Exited demo mode"})
                 # Delete cookie
