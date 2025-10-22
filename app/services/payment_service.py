@@ -124,7 +124,7 @@ class PaymentService:
         valid_before = valid_after + 3600  # 1 hour
 
         # EIP-712 domain for Base Sepolia USDC
-        # ВАЖНО: name должен быть "USDC", а не "USD Coin" для Base Sepolia!
+        # IMPORTANT: name must be "USDC", not "USD Coin" for Base Sepolia!
         domain = {
             "name": "USDC",
             "version": "2",
@@ -192,7 +192,7 @@ class PaymentService:
         """
         try:
             # EIP-712 domain
-            # ВАЖНО: name должен быть "USDC" для Base Sepolia!
+            # IMPORTANT: name must be "USDC" for Base Sepolia!
             domain = {
                 "name": "USDC",
                 "version": "2",

@@ -56,7 +56,7 @@ app = FastAPI(
 )
 
 # Demo Mode middleware (intercepts requests when ?demo=true)
-# ВАЖНО: Должен быть ПЕРВЫМ (выполняется последним, после SessionMiddleware)
+# IMPORTANT: Must be FIRST (executes last, after SessionMiddleware)
 app.add_middleware(DemoModeMiddleware)
 
 # Session middleware (required for Auth0)

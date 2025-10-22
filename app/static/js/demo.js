@@ -1,29 +1,29 @@
 /**
  * Demo Mode Frontend Module
- * Автоматическая активация demo режима и UI улучшения
+ * Automatic activation of demo mode and UI improvements
  */
 
-// Проверка активации demo режима
+// Check for demo mode activation
 const isDemoMode = () => {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('demo') === 'true' ||
            document.cookie.includes('demo_mode=true');
 };
 
-// Активация demo режима (автоматически при ?demo=true)
+// Activate demo mode (automatically with ?demo=true)
 const activateDemoMode = () => {
     console.log('🎭 Demo Mode activated');
 
-    // Показываем demo баннер
+    // Show the demo banner
     showDemoBanner();
 
-    // Автоматический "логин"
+    // Automatic "login"
     autoDemoLogin();
 };
 
-// Показать баннер Demo Mode
+// Show the Demo Mode banner
 const showDemoBanner = () => {
-    // Проверяем, не добавлен ли уже баннер
+    // Check if the banner has already been added
     if (document.getElementById('demo-banner')) return;
 
     const banner = document.createElement('div');
@@ -44,14 +44,14 @@ const showDemoBanner = () => {
 
     document.body.prepend(banner);
 
-    // Сдвигаем контент вниз, чтобы баннер не перекрывал
+    // Shift the content down so the banner doesn't overlap
     document.body.style.paddingTop = '40px';
 };
 
-// Автоматический логин для demo
+// Automatic login for demo
 const autoDemoLogin = async () => {
     try {
-        // Проверяем, что пользователь уже "залогинен" через middleware
+        // Check if the user is already "logged in" via middleware
         const response = await fetch('/auth/user');
 
         if (response.ok) {
@@ -60,15 +60,15 @@ const autoDemoLogin = async () => {
             if (data.authenticated && data.user) {
                 console.log('✅ Demo user authenticated:', data.user.email);
 
-                // Устанавливаем demo wallet
+                // Set the demo wallet
                 window.userAddress = '0xdE3089c44de71234567890123456789012345678';
 
-                // Инициализируем приложение с demo пользователем
+                // Initialize the app with the demo user
                 if (typeof initializeApp === 'function') {
                     await initializeApp(data.user);
                 }
 
-                // Загружаем задачи
+                // Load tasks
                 if (typeof loadTasks === 'function') {
                     await loadTasks();
                 }
@@ -81,10 +81,10 @@ const autoDemoLogin = async () => {
     }
 };
 
-// Выход из demo режима
+// Exit demo mode
 const exitDemoMode = async () => {
     try {
-        // Вызываем API для выхода из demo (очищает session на сервере)
+        // Call the API to exit demo mode (clears the session on the server)
         await fetch('/api/demo/exit', {
             method: 'POST',
             credentials: 'include'
@@ -93,18 +93,18 @@ const exitDemoMode = async () => {
         console.error('Failed to exit demo mode:', error);
     }
 
-    // Удаляем все demo cookies на клиенте
+    // Delete all demo cookies on the client
     document.cookie = 'demo_mode=; path=/; max-age=0';
     document.cookie = 'agentbounty_session=; path=/; max-age=0';
 
-    // Очищаем localStorage
+    // Clear localStorage
     localStorage.removeItem('demo_mode');
 
-    // Перезагружаем на главную страницу
+    // Reload to the main page
     window.location.href = '/';
 };
 
-// Добавить водяной знак на результаты (опционально)
+// Add a watermark to the results (optional)
 const addDemoWatermark = (element) => {
     if (!isDemoMode()) return;
 
@@ -115,9 +115,9 @@ const addDemoWatermark = (element) => {
     element.appendChild(watermark);
 };
 
-// Инициализация при загрузке страницы
+// Initialize on page load
 if (isDemoMode()) {
-    // Ждем загрузки DOM
+    // Wait for the DOM to load
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', activateDemoMode);
     } else {
@@ -125,7 +125,7 @@ if (isDemoMode()) {
     }
 }
 
-// Экспорт функций в window для глобального доступа
+// Export functions to window for global access
 window.isDemoMode = isDemoMode;
 window.activateDemoMode = activateDemoMode;
 window.exitDemoMode = exitDemoMode;

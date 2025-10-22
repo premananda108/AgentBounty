@@ -21,8 +21,8 @@ DEMO_WALLET = {
     "connected": True
 }
 
-# Demo Tasks - 2 задачи с разными статусами для демонстрации функционала
-# Данные взяты из реальной базы данных
+# Demo Tasks - 2 tasks with different statuses to demonstrate functionality
+# Data is taken from a real database
 DEMO_TASKS = [
     {
         "id": "demo_task_001",
@@ -65,7 +65,7 @@ DEMO_TASKS = [
     },
 ]
 
-# Demo Results - богатый контент для каждой задачи
+# Demo Results - rich content for each task
 DEMO_RESULTS = {
     "demo_task_001": {
         "task_id": "demo_task_001",
@@ -199,7 +199,7 @@ The substantive claims made in Anthropic's LinkedIn post regarding its CEO Dario
     }
 }
 
-# Preview для задач (первые 200 символов)
+# Previews for tasks (first 200 characters)
 DEMO_PREVIEWS = {
     "demo_task_001": "## Post Summary\n\nThe LinkedIn post, published by the official Anthropic company page, announces that its CEO, Dario Amodei, met with India's Prime Minister Narendra Modi in New Delhi. The post details the discussion points...",
     "demo_task_002": "## Flights from New York to Miami on October 29, 2025\n\n**American Airlines**\n- **Price:** Starting from $126.96\n- **Departure/Arrival:** Daily service from JFK/LGA to MIA\n- **Duration:** Approximately 3 hours..."

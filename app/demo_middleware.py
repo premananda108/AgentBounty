@@ -1,6 +1,6 @@
 """
 Demo Mode Middleware - Simple approach with request interception
-Автоматически подменяет данные в demo режиме без изменения сервисов
+Automatically substitutes data in demo mode without changing the services
 """
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -12,29 +12,29 @@ import re
 
 class DemoModeMiddleware(BaseHTTPMiddleware):
     """
-    Перехватывает запросы в demo режиме и возвращает mock данные
-    Активируется через /?demo=true или cookie demo_mode=true
+    Intercepts requests in demo mode and returns mock data
+    Activated via /?demo=true or cookie demo_mode=true
     """
 
     async def dispatch(self, request, call_next):
-        # Проверка активации demo режима
-        # Проверяем query params, cookies И session
+        # Check for demo mode activation
+        # Check query params, cookies AND session
         is_demo = (
             request.query_params.get('demo') == 'true' or
             request.cookies.get('demo_mode') == 'true'
         )
 
-        # Если параметров нет, проверим session (доступен после SessionMiddleware)
+        # If no params, check session (available after SessionMiddleware)
         if not is_demo and hasattr(request, 'session'):
             is_demo = request.session.get('demo_mode') == True
 
         if is_demo:
-            # Активируем demo режим в сессии
+            # Activate demo mode in session
             request.session['demo_mode'] = True
             request.session['user'] = DEMO_USER
             request.session['wallet_address'] = DEMO_WALLET['wallet_address']
 
-            # Перехват API запросов
+            # Intercept API requests
             path = request.url.path
             method = request.method
 
@@ -63,9 +63,9 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
                 })
 
             if path == '/api/tasks/' and method == 'POST':
-                # Создание новой задачи (возвращаем pending задачу)
+                # Create a new task (return a pending task)
                 return JSONResponse(
-                    DEMO_TASKS[2],  # pending задача
+                    DEMO_TASKS[2],  # pending task
                     status_code=201
                 )
 
@@ -83,7 +83,7 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
                 task_id = start_match.group(1)
                 task = next((t for t in DEMO_TASKS if t['id'] == task_id), None)
                 if task:
-                    # Изменяем статус на running (симуляция)
+                    # Change status to running (simulation)
                     running_task = task.copy()
                     running_task['status'] = 'running'
                     return JSONResponse(running_task)
@@ -100,18 +100,18 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
                         status_code=404
                     )
 
-                # Если задача не completed
+                # If the task is not completed
                 if task['status'] != 'completed':
                     return JSONResponse({
                         "status": task['status'],
                         "message": f"Task is {task['status']}, result not available yet"
                     })
 
-                # Проверяем оплату: либо payment_status=paid, либо в session отмечено как оплаченное
+                # Check payment: either payment_status=paid, or marked as paid in session
                 demo_paid_tasks = request.session.get('demo_paid_tasks', [])
                 is_paid = task['payment_status'] == 'paid' or task_id in demo_paid_tasks
 
-                # Если не оплачено - вернуть 402 с preview
+                # If not paid - return 402 with preview
                 if not is_paid:
                     preview = DEMO_PREVIEWS.get(task_id)
 
@@ -142,27 +142,27 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
                         status_code=402
                     )
 
-                # Оплачено - вернуть результат
+                # Paid - return result
                 result = DEMO_RESULTS.get(task_id)
                 if result:
                     return JSONResponse(result)
 
             # --- PAYMENT ENDPOINTS ---
             if path == '/api/payments/authorize' and method == 'POST':
-                # Получаем task_id из body
+                # Get task_id from body
                 try:
                     body = await request.json()
                     task_id = body.get('task_id', 'demo_task_002')
                 except:
                     task_id = 'demo_task_002'
 
-                # Отмечаем задачу как оплаченную в session
+                # Mark task as paid in session
                 if 'demo_paid_tasks' not in request.session:
                     request.session['demo_paid_tasks'] = []
                 if task_id not in request.session['demo_paid_tasks']:
                     request.session['demo_paid_tasks'].append(task_id)
 
-                # В demo режиме всегда успешная оплата
+                # In demo mode, payment is always successful
                 return JSONResponse({
                     "success": True,
                     "message": "Demo payment processed",
@@ -172,13 +172,13 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
 
             # --- EXIT DEMO ENDPOINT ---
             if path == '/api/demo/exit' and method == 'POST':
-                # Очищаем demo режим из сессии
+                # Clear demo mode from session
                 request.session['demo_mode'] = False
                 request.session.pop('user', None)
                 request.session.pop('wallet_address', None)
 
                 response = JSONResponse({"success": True, "message": "Exited demo mode"})
-                # Удаляем cookie
+                # Delete cookie
                 response.delete_cookie('demo_mode')
                 return response
 
@@ -199,10 +199,10 @@ class DemoModeMiddleware(BaseHTTPMiddleware):
                     }
                 })
 
-        # Если не demo или endpoint не перехвачен - обычная обработка
+        # If not demo or endpoint not intercepted - normal processing
         response = await call_next(request)
 
-        # Добавляем cookie для demo режима если активирован
+        # Add cookie for demo mode if activated
         if is_demo:
             response.set_cookie(
                 key='demo_mode',
