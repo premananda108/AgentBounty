@@ -88,5 +88,6 @@ async def plan_travel(ctx: Context, message: str) -> str:
     result = await task_service.execute_task(task['id'], MCP_USER_ID)
     return result['output_data']['output']
 
-# Expose the server as an ASGI app
-app = mcp_server.streamable_http_app()
+# Expose the server's router for inclusion in the main app
+_mcp_app = mcp_server.streamable_http_app()
+mcp_router = _mcp_app.router

@@ -90,16 +90,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.mcp_server import app as mcp_app
+from app.mcp_server import mcp_router
 
 # Include routers
 app.include_router(auth.router)
 app.include_router(wallet.router)
 app.include_router(tasks.router)
 app.include_router(payments.router)
-
-# Mount the MCP server
-app.mount("/mcp", mcp_app)
+app.include_router(mcp_router)
 
 
 # Health check endpoint
