@@ -32,8 +32,22 @@ const getToken = async () => {
     return 'cookie-session'; // Placeholder value
 };
 
+// Check if demo mode is active (check directly from URL/cookie)
+const isInDemoMode = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('demo') === 'true' || document.cookie.includes('demo_mode=true');
+};
+
 // Main function to update the UI based on authentication state
 const updateUI = async () => {
+    // Check if we're in demo mode - if so, skip standard auth
+    if (isInDemoMode()) {
+        console.log('🎭 Demo mode detected - skipping standard auth flow');
+        document.getElementById('main-content').classList.remove('hidden');
+        // Demo mode will handle authentication via demo.js
+        return;
+    }
+
     const user = await checkSession();
     const isAuthenticated = !!user;
 

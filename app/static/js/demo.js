@@ -46,7 +46,7 @@ const checkAndActivateDemoMode = () => {
 };
 
 // Activate demo mode (automatically with ?demo=true)
-const activateDemoMode = () => {
+const activateDemoMode = async () => {
     console.log('🎭 Demo Mode activated');
 
     // Ensure cookie is set
@@ -58,7 +58,7 @@ const activateDemoMode = () => {
     showDemoBanner();
 
     // Automatic "login"
-    autoDemoLogin();
+    await autoDemoLogin();
 };
 
 // Show the Demo Mode banner
@@ -91,33 +91,35 @@ const showDemoBanner = () => {
 // Automatic login for demo
 const autoDemoLogin = async () => {
     try {
-        // Check if the user is already "logged in" via middleware
-        const response = await fetch('/auth/user');
+        // Create demo user object directly (no need to fetch from server)
+        const demoUser = {
+            sub: 'demo|user_12345',
+            email: 'demo@agentbounty.com',
+            name: 'Demo User',
+            nickname: 'demo',
+            picture: 'https://i.pravatar.cc/150?img=68',
+            email_verified: true
+        };
 
-        if (response.ok) {
-            const data = await response.json();
+        console.log('✅ Demo user initialized:', demoUser.email);
 
-            if (data.authenticated && data.user) {
-                console.log('✅ Demo user authenticated:', data.user.email);
+        // Set the demo wallet
+        window.userAddress = '0xdE3089c44de71234567890123456789012345678';
+        window.demoWallet = true;
 
-                // Set the demo wallet
-                window.userAddress = '0xdE3089c44de71234567890123456789012345678';
-
-                // Initialize the app with the demo user
-                if (typeof initializeApp === 'function') {
-                    await initializeApp(data.user);
-                }
-
-                // Load tasks
-                if (typeof loadTasks === 'function') {
-                    await loadTasks();
-                }
-
-                return data.user;
-            }
+        // Initialize the app with the demo user
+        if (typeof initializeApp === 'function') {
+            await initializeApp(demoUser);
         }
+
+        // Load tasks
+        if (typeof loadTasks === 'function') {
+            await loadTasks();
+        }
+
+        return demoUser;
     } catch (error) {
-        console.error('Demo login failed:', error);
+        console.error('Demo initialization failed:', error);
     }
 };
 
