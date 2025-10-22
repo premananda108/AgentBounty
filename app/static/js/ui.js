@@ -138,7 +138,18 @@ async function setupWalletConnection(provider) {
     }
 }
 
+// Detect if user is on mobile
+const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Get current page URL for deep linking
+const getCurrentUrl = () => {
+    return window.location.href;
+};
+
 async function connectWallet() {
+    // Check if MetaMask is available
     if (window.ethereum) {
         try {
             const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -149,9 +160,65 @@ async function connectWallet() {
             alert("Failed to connect wallet. Please try again.");
         }
     } else {
-        alert('Please install MetaMask!');
+        // No MetaMask detected
+        if (isMobile()) {
+            // On mobile - provide options to open in MetaMask browser or install
+            showMobileWalletOptions();
+        } else {
+            // On desktop - suggest installing MetaMask
+            if (confirm('MetaMask is not installed. Would you like to install it?')) {
+                window.open('https://metamask.io/download/', '_blank');
+            }
+        }
     }
 }
+
+// Show mobile wallet connection options
+const showMobileWalletOptions = () => {
+    const currentUrl = getCurrentUrl();
+    const metamaskDeepLink = `https://metamask.app.link/dapp/${currentUrl.replace(/^https?:\/\//, '')}`;
+
+    // Create modal for mobile options
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full">
+            <h3 class="text-lg font-bold mb-4">Connect Wallet</h3>
+            <p class="text-sm text-gray-600 mb-4">To use AgentBounty, you need a Web3 wallet:</p>
+
+            <div class="space-y-3">
+                <a href="${metamaskDeepLink}"
+                   class="block w-full bg-orange-500 text-white px-4 py-3 rounded-lg text-center font-semibold hover:bg-orange-600">
+                    📱 Open in MetaMask App
+                </a>
+
+                <a href="https://metamask.io/download/"
+                   target="_blank"
+                   class="block w-full bg-blue-500 text-white px-4 py-3 rounded-lg text-center font-semibold hover:bg-blue-600">
+                    📲 Install MetaMask
+                </a>
+
+                <button onclick="this.closest('.fixed').remove()"
+                        class="block w-full bg-gray-300 text-gray-700 px-4 py-3 rounded-lg text-center font-semibold hover:bg-gray-400">
+                    Cancel
+                </button>
+            </div>
+
+            <p class="text-xs text-gray-500 mt-4 text-center">
+                💡 If you have MetaMask installed, click "Open in MetaMask App"
+            </p>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+};
 
 async function checkWalletConnection() {
     // Skip wallet connection check in demo mode
@@ -185,7 +252,15 @@ async function checkWalletConnection() {
 const renderWalletConnect = () => {
     const walletContainer = document.getElementById('wallet-container');
     if (!walletContainer) return;
-    walletContainer.innerHTML = `<button id="connect-wallet-button" class="bg-purple-500 text-white px-4 py-2 rounded">Connect Wallet</button>`;
+
+    // Different button text for mobile
+    const buttonText = isMobile() ? '📱 Connect Wallet' : 'Connect Wallet';
+
+    walletContainer.innerHTML = `
+        <button id="connect-wallet-button" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors">
+            ${buttonText}
+        </button>
+    `;
     document.getElementById('connect-wallet-button').addEventListener('click', connectWallet);
 };
 

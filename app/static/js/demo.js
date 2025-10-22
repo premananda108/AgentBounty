@@ -25,21 +25,17 @@ const checkAndActivateDemoMode = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const hasDemoParam = urlParams.get('demo') === 'true';
     const hasDemoCookie = document.cookie.includes('demo_mode=true');
-    const hasReloadFlag = sessionStorage.getItem('demo_reload_attempted');
 
-    // If we have ?demo=true but no cookie and haven't tried reloading yet
-    if (hasDemoParam && !hasDemoCookie && !hasReloadFlag) {
-        console.log('🔄 Setting demo cookie and reloading...');
+    // If we have ?demo=true but no cookie - set it and ALWAYS reload
+    if (hasDemoParam && !hasDemoCookie) {
+        console.log('🔄 Activating demo mode - setting cookie and reloading...');
         setDemoCookie();
-        sessionStorage.setItem('demo_reload_attempted', 'true');
-        // Force hard reload
-        window.location.reload(true);
+        // Clear ALL storage to prevent state conflicts
+        sessionStorage.clear();
+        localStorage.clear();
+        // Force hard reload with cache bypass
+        window.location.href = window.location.href.split('?')[0] + '?demo=true&_=' + Date.now();
         return false; // Don't continue initialization
-    }
-
-    // Clear reload flag if we're in demo mode
-    if (hasDemoCookie) {
-        sessionStorage.removeItem('demo_reload_attempted');
     }
 
     return hasDemoParam || hasDemoCookie;
@@ -125,6 +121,8 @@ const autoDemoLogin = async () => {
 
 // Exit demo mode
 const exitDemoMode = async () => {
+    console.log('🚪 Exiting demo mode...');
+
     try {
         // Call the API to exit demo mode (clears the session on the server)
         await fetch('/api/demo/exit', {
@@ -132,19 +130,27 @@ const exitDemoMode = async () => {
             credentials: 'include'
         });
     } catch (error) {
-        console.error('Failed to exit demo mode:', error);
+        console.error('Failed to exit demo mode on server:', error);
     }
 
-    // Delete all demo cookies on the client
-    document.cookie = 'demo_mode=; path=/; max-age=0';
-    document.cookie = 'agentbounty_session=; path=/; max-age=0';
+    // Delete ALL cookies (complete cleanup)
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const eqPos = cookie.indexOf('=');
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        document.cookie = name + '=; path=/; max-age=0';
+    }
 
-    // Clear localStorage and sessionStorage
-    localStorage.removeItem('demo_mode');
-    sessionStorage.removeItem('demo_reload_attempted');
+    // Clear ALL storage (complete cleanup)
+    try {
+        sessionStorage.clear();
+        localStorage.clear();
+    } catch (e) {
+        console.warn('Could not clear storage:', e);
+    }
 
-    // Reload to the main page (without ?demo=true)
-    window.location.href = '/';
+    // Force hard reload to main page with cache bypass
+    window.location.href = '/?_=' + Date.now();
 };
 
 // Add a watermark to the results (optional)
