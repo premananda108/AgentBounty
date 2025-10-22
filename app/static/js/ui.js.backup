@@ -1,0 +1,475 @@
+const headerContainer = document.getElementById('header-container');
+const taskCreatorContainer = document.getElementById('task-creator-container');
+const taskListContainer = document.getElementById('task-list-container');
+const paymentModal = document.getElementById('payment-modal');
+
+const renderHeader = (isAuthenticated, user) => {
+    headerContainer.innerHTML = `
+        <header class="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-50 mb-8">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-primary-600">AgentBounty</h1>
+                        <p class="text-sm text-gray-600">AI Agent Marketplace</p>
+                    </div>
+                    <div class="flex items-center gap-4" id="auth-container">
+                        ${isAuthenticated ? `
+                            <div id="user-profile" class="flex items-center gap-4">
+                                <span class="text-sm text-gray-600">${user.email}</span>
+                                <div id="wallet-container"></div>
+                            </div>
+                            <button id="logout-button" class="bg-red-500 text-white px-4 py-2 rounded">Log Out</button>
+                        ` : `
+                            <button id="login-button" class="bg-blue-500 text-white px-4 py-2 rounded">Log In</button>
+                        `}
+                    </div>
+                </div>
+            </div>
+        </header>
+    `;
+
+    if (isAuthenticated) {
+        document.getElementById('logout-button').addEventListener('click', logout);
+    } else {
+        document.getElementById('login-button').addEventListener('click', login);
+    }
+};
+
+const renderWalletConnect = () => {
+    const walletContainer = document.getElementById('wallet-container');
+    if (!walletContainer) return;
+    walletContainer.innerHTML = `<button id="connect-wallet-button" class="bg-purple-500 text-white px-4 py-2 rounded">Connect Wallet</button>`;
+
+    const connectWalletButton = document.getElementById('connect-wallet-button');
+    connectWalletButton.addEventListener('click', async () => {
+        if (window.ethereum) {
+            try {
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+
+                // Check network and switch if needed
+                const network = await provider.getNetwork();
+                console.log('Connected to network:', network);
+
+                if (network.chainId !== 84532) {
+                    console.log('Wrong network, switching to Base Sepolia...');
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x14a34' }], // 84532 in hex
+                        });
+                    } catch (switchError) {
+                        if (switchError.code === 4902) {
+                            console.log('Base Sepolia not found, adding network...');
+                            await window.ethereum.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [{
+                                    chainId: '0x14a34',
+                                    chainName: 'Base Sepolia',
+                                    nativeCurrency: {
+                                        name: 'Ethereum',
+                                        symbol: 'ETH',
+                                        decimals: 18
+                                    },
+                                    rpcUrls: ['https://sepolia.base.org'],
+                                    blockExplorerUrls: ['https://sepolia.basescan.org']
+                                }]
+                            });
+                        } else {
+                            throw switchError;
+                        }
+                    }
+                }
+
+                const signer = provider.getSigner();
+                const userAddress = await signer.getAddress();
+                walletContainer.innerHTML = `<p class="text-sm text-gray-600">${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}</p>`;
+                window.signer = signer;
+                window.userAddress = userAddress;
+                loadTasks();
+                startTaskUpdates();
+            } catch (error) {
+                console.error("Failed to connect wallet:", error);
+                alert("Failed to connect wallet. Please try again.");
+            }
+        } else {
+            alert('Please install MetaMask!');
+        }
+    });
+};
+
+const renderTaskList = (tasks) => {
+    if (!tasks || tasks.length === 0) {
+        taskListContainer.innerHTML = `
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="text-center py-12">
+                    <p class="text-gray-600 mb-2">No tasks yet</p>
+                    <p class="text-sm text-gray-500">Log in and connect your wallet to see your tasks.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const taskCards = tasks.map(task => {
+        const getStatusColor = (status) => {
+            switch (status) {
+                case 'pending': return 'bg-gray-100 text-gray-800';
+                case 'running': return 'bg-blue-100 text-blue-800';
+                case 'completed': return 'bg-green-100 text-green-800';
+                case 'failed': return 'bg-red-100 text-red-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        };
+
+        const getStatusIcon = (status) => {
+            switch (status) {
+                case 'pending': return '⏸️';
+                case 'running': return '⚡';
+                case 'completed': return '✅';
+                case 'failed': return '❌';
+                default: return '•';
+            }
+        };
+
+        return `
+            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow mb-4">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-1 rounded text-xs font-medium ${getStatusColor(task.status)}">
+                                ${getStatusIcon(task.status)} ${task.status.toUpperCase()}
+                            </span>
+                            <span class="text-xs text-gray-500">${task.agent_type}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">
+                            ${task.agent_type === 'ai-travel-planner' ? `Travel: ${task.input_data.text?.substring(0, 50)}...` : task.input_data.mode === 'url' ? `URL: ${task.input_data.url?.substring(0, 50)}...` : `Text: ${task.input_data.text?.substring(0, 50)}...`}
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-gray-900">
+                            $${task.actual_cost?.toFixed(2) || task.estimated_cost.toFixed(2)}
+                        </p>
+                        <p class="text-xs text-gray-500">
+                            ${task.actual_cost ? 'Actual' : 'Estimated'}
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                    <span>Created: ${new Date(task.created_at).toLocaleString()}</span>
+                    ${task.completed_at ? `<span>Completed: ${new Date(task.completed_at).toLocaleString()}</span>` : ''}
+                </div>
+                ${task.status === 'completed' ? `<div class="mt-3 pt-3 border-t border-gray-200" id="task-result-${task.id}"><button class="view-result-button w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg" data-task-id="${task.id}">View Result</button></div>` : ''}
+                ${task.status === 'running' ? `<div class="mt-3 flex items-center gap-2 text-sm text-blue-600"><span class="animate-spin">⚡</span><span>Agent is working...</span></div>` : ''}
+                ${task.status === 'failed' && task.metadata?.error ? `<div class="mt-3 p-3 bg-red-50 rounded text-sm text-red-800">Error: ${task.metadata.error}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+
+    taskListContainer.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold">Your Tasks (${tasks.length})</h2>
+                <button id="refresh-tasks-button" class="text-sm text-primary-600 hover:text-primary-700">🔄 Refresh</button>
+            </div>
+            ${taskCards}
+        </div>
+    `;
+
+    document.getElementById('refresh-tasks-button').addEventListener('click', () => {
+        loadTasks();
+    });
+
+    // Add event listeners for "View Result" buttons
+    document.querySelectorAll('.view-result-button').forEach(button => {
+        button.addEventListener('click', async () => {
+            const taskId = button.getAttribute('data-task-id');
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                console.log('View Result button clicked for task:', taskId);
+                // Import handleCompletedTask from app.js context
+                if (window.handleCompletedTask) {
+                    await window.handleCompletedTask(task);
+                } else {
+                    console.error('handleCompletedTask not found in window');
+                }
+            }
+        });
+    });
+};
+
+const showPaymentModal = (amount) => {
+    console.log('showPaymentModal called with amount:', amount);
+    const modal = document.getElementById('payment-modal');
+    const amountElement = document.getElementById('payment-amount');
+
+    if (amountElement) {
+        amountElement.textContent = amount;
+        console.log('Payment amount set to:', amount);
+    } else {
+        console.error('payment-amount element not found');
+    }
+
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        console.log('Payment modal shown');
+
+        // Close modal on background click
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                hidePaymentModal();
+            }
+        };
+    } else {
+        console.error('payment-modal not found');
+    }
+};
+
+const hidePaymentModal = () => {
+    console.log('hidePaymentModal called');
+    const modal = document.getElementById('payment-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+        console.log('Payment modal hidden');
+    }
+};
+
+const renderTaskCreator = async (isAuthenticated) => {
+    const disabledAttribute = isAuthenticated ? '' : 'disabled';
+    const message = isAuthenticated ? '' : `
+        <div class="text-center p-4 mb-4 bg-yellow-100 border border-yellow-300 rounded-lg text-yellow-800">
+            Please log in and connect your wallet to create a task.
+        </div>
+    `;
+
+    // Fetch available agents
+    let agentsHTML = '';
+    try {
+        const agentsData = await listAgents();
+        const agents = agentsData.agents;
+
+        // Agent icons mapping
+        const agentIcons = {
+            'factcheck': '🔍',
+            'ai-travel-planner': '✈️'
+        };
+
+        agentsHTML = `
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold mb-3">Select an Agent</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="agent-cards">
+                    ${Object.entries(agents).map(([agentType, agentInfo]) => `
+                        <div class="agent-card border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all ${disabledAttribute ? 'opacity-50 cursor-not-allowed' : ''}"
+                             data-agent-type="${agentType}"
+                             ${disabledAttribute ? 'data-disabled="true"' : ''}>
+                            <div class="flex items-start space-x-3">
+                                <div class="text-3xl">${agentIcons[agentType] || '🤖'}</div>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-gray-900">${agentInfo.name}</h4>
+                                    <p class="text-sm text-gray-600 mt-1">${agentInfo.description}</p>
+                                    <div class="flex items-center justify-between mt-2">
+                                        <span class="text-xs font-medium text-blue-600">$${agentInfo.base_cost.toFixed(4)} USDC</span>
+                                        <span class="text-xs text-gray-500">Click to select</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Failed to load agents:', error);
+        agentsHTML = '<div class="text-red-500 mb-4">Failed to load agents</div>';
+    }
+
+    taskCreatorContainer.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">Create New Task</h2>
+            ${message}
+            ${agentsHTML}
+            <form id="task-creator-form" class="space-y-4 hidden">
+                <fieldset ${disabledAttribute}>
+                    <input type="hidden" id="agent-type" value="">
+                    <div id="selected-agent-info" class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-blue-900">Selected: <span id="selected-agent-name"></span></span>
+                            <button type="button" id="change-agent-button" class="text-sm text-blue-600 hover:text-blue-800">Change Agent</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Input Mode</label>
+                        <div class="flex gap-4">
+                            <label class="flex items-center">
+                                <input type="radio" name="mode" value="text" checked class="mr-2">
+                                Text Content
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="mode" value="url" class="mr-2">
+                                Social Media URL
+                            </label>
+                        </div>
+                    </div>
+                    <div id="text-input-container">
+                        <label for="text" class="block text-sm font-medium text-gray-700 mb-1">Text Content</label>
+                        <textarea id="text" placeholder="Enter the text content to process..." rows="5" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                    </div>
+                    <div id="url-input-container" class="hidden">
+                        <label for="url" class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                        <input id="url" type="url" placeholder="https://example.com/..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    </div>
+                    <button type="submit" class="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors">
+                        Create & Start Task
+                    </button>
+                </fieldset>
+            </form>
+        </div>
+    `;
+
+    const textInputContainer = document.getElementById('text-input-container');
+    const urlInputContainer = document.getElementById('url-input-container');
+    const modeRadios = document.querySelectorAll('input[name="mode"]');
+    const agentTypeSelect = document.getElementById('agent-type');
+    const modeContainer = modeRadios[0].closest('.flex').parentElement;
+
+    // Function to update UI based on agent type
+    const updateUIForAgentType = () => {
+        const agentType = agentTypeSelect.value;
+
+        if (agentType === 'ai-travel-planner') {
+            // For travel planner, only text mode is available
+            modeContainer.classList.add('hidden');
+            document.querySelector('input[name="mode"][value="text"]').checked = true;
+            textInputContainer.classList.remove('hidden');
+            urlInputContainer.classList.add('hidden');
+        } else {
+            // For other agents (factcheck), show mode selection
+            modeContainer.classList.remove('hidden');
+            const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+            if (selectedMode === 'text') {
+                textInputContainer.classList.remove('hidden');
+                urlInputContainer.classList.add('hidden');
+            } else {
+                textInputContainer.classList.add('hidden');
+                urlInputContainer.classList.remove('hidden');
+            }
+        }
+    };
+
+    // Listen to agent type changes
+    agentTypeSelect.addEventListener('change', updateUIForAgentType);
+
+    // Listen to mode radio changes
+    modeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (e.target.value === 'text') {
+                textInputContainer.classList.remove('hidden');
+                urlInputContainer.classList.add('hidden');
+            } else {
+                textInputContainer.classList.add('hidden');
+                urlInputContainer.classList.remove('hidden');
+            }
+        });
+    });
+
+    // Initialize UI based on default agent type
+    updateUIForAgentType();
+
+    // Handle agent card selection
+    if (isAuthenticated) {
+        const agentCards = document.querySelectorAll('.agent-card');
+        const taskCreatorForm = document.getElementById('task-creator-form');
+        const agentCardsContainer = document.getElementById('agent-cards');
+        const selectedAgentNameSpan = document.getElementById('selected-agent-name');
+        const changeAgentButton = document.getElementById('change-agent-button');
+
+        agentCards.forEach(card => {
+            card.addEventListener('click', () => {
+                if (card.dataset.disabled) return;
+
+                const agentType = card.dataset.agentType;
+                const agentName = card.querySelector('h4').textContent;
+
+                // Update hidden input
+                document.getElementById('agent-type').value = agentType;
+
+                // Update selected agent display
+                selectedAgentNameSpan.textContent = agentName;
+
+                // Hide agent cards, show form
+                agentCardsContainer.parentElement.classList.add('hidden');
+                taskCreatorForm.classList.remove('hidden');
+
+                // Update UI for selected agent
+                updateUIForAgentType();
+            });
+        });
+
+        // Handle change agent button
+        if (changeAgentButton) {
+            changeAgentButton.addEventListener('click', () => {
+                agentCardsContainer.parentElement.classList.remove('hidden');
+                taskCreatorForm.classList.add('hidden');
+                document.getElementById('agent-type').value = '';
+            });
+        }
+
+        taskCreatorForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const agentType = document.getElementById('agent-type').value;
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            const text = document.getElementById('text').value;
+            const url = document.getElementById('url').value;
+
+            let input_data;
+
+            // For travel planner, only text mode
+            if (agentType === 'ai-travel-planner') {
+                if (!text.trim()) {
+                    alert('Please enter your travel request');
+                    return;
+                }
+                input_data = { text: text.trim() };
+            } else {
+                // For factcheck agent, support both modes
+                if (mode === 'text') {
+                    if (!text.trim()) {
+                        alert('Please enter text to fact-check');
+                        return;
+                    }
+                    input_data = { mode: 'text', text: text.trim() };
+                } else {
+                    if (!url.trim()) {
+                        alert('Please enter a URL to fact-check');
+                        return;
+                    }
+                    input_data = { mode: 'url', url: url.trim() };
+                }
+            }
+
+            handleTaskCreation(submitButton, { agent_type: agentType, input_data });
+        });
+    }
+};
+
+const handleTaskCreation = async (submitButton, taskData) => {
+    submitButton.disabled = true;
+    submitButton.innerHTML = `<span class="animate-spin">⏳</span> Creating...`;
+
+    try {
+        const newTask = await createTask(taskData);
+        await startTask(newTask.id);
+        document.getElementById('text').value = '';
+        document.getElementById('url').value = '';
+        loadTasks();
+    } catch (error) {
+        console.error('Failed to create task:', error);
+        alert(`Error: ${error.message}`);
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Create & Start Task';
+    }
+};

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentBounty - AI Agent Marketplace</title>
+    <link href="/output.css" rel="stylesheet">
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+    <script src="/js/ethers-5.2.umd.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="app" class="container mx-auto px-4 py-2">
+        <!-- Header will be rendered here by js/ui.js -->
+        <div id="header-container"></div>
+
+        <main id="main-content" class="hidden">
+            <div class="max-w-5xl mx-auto">
+                <div id="task-creator-container"></div>
+                <div id="task-list-container"></div>
+            </div>
+        </main>
+
+        <!-- Create Task Modal -->
+        <div id="create-task-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50" style="display: none;">
+            <div class="relative mx-auto p-0 border-0 w-full max-w-2xl shadow-2xl rounded-xl bg-white m-4 animate-modal-slide-up">
+                <!-- Modal content will be rendered by JS -->
+            </div>
+        </div>
+
+        <!-- Payment Modal -->
+        <div id="payment-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50" style="display: none;">
+            <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Payment Required</h3>
+                    <div class="mt-2 px-7 py-3">
+                        <p class="text-sm text-gray-500">To view the result, you need to authorize a payment of <span id="payment-amount"></span> USDC.</p>
+                    </div>
+                    <div class="items-center px-4 py-3">
+                        <button id="approve-payment-button" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                            Approve Payment
+                        </button>
+                        <button id="cancel-payment-button" class="mt-2 px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/demo.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/task-list.js"></script>
+    <script src="/js/app.js"></script>
+    <script src="/js/auth.js"></script>
+</body>
+</html>
