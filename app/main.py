@@ -97,7 +97,7 @@ app.include_router(auth.router)
 app.include_router(wallet.router)
 app.include_router(tasks.router)
 app.include_router(payments.router)
-app.include_router(mcp_router)
+app.include_router(mcp_router, prefix="/mcp")
 
 
 # Health check endpoint
