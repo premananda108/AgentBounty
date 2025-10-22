@@ -296,6 +296,40 @@ const showMobileWalletOptions = () => {
     });
 };
 
+// Wait for ethereum provider on mobile (injected asynchronously)
+const waitForEthereumProvider = async (maxWait = 3000) => {
+    if (window.ethereum) return true;
+
+    console.log('📱 Mobile: Waiting for ethereum provider...');
+    const startTime = Date.now();
+
+    return new Promise((resolve) => {
+        // Listen for MetaMask initialization event
+        const handleEthereumInit = () => {
+            console.log('✅ Ethereum provider initialized via event!');
+            window.removeEventListener('ethereum#initialized', handleEthereumInit);
+            resolve(true);
+        };
+
+        window.addEventListener('ethereum#initialized', handleEthereumInit, { once: true });
+
+        // Also poll for window.ethereum
+        const checkInterval = setInterval(() => {
+            if (window.ethereum) {
+                console.log('✅ Ethereum provider detected via polling!');
+                clearInterval(checkInterval);
+                window.removeEventListener('ethereum#initialized', handleEthereumInit);
+                resolve(true);
+            } else if (Date.now() - startTime > maxWait) {
+                console.log('⏱️ Timeout: No ethereum provider found after', maxWait, 'ms');
+                clearInterval(checkInterval);
+                window.removeEventListener('ethereum#initialized', handleEthereumInit);
+                resolve(false);
+            }
+        }, 100);
+    });
+};
+
 async function checkWalletConnection() {
     // Skip wallet connection check in demo mode
     if (window.isDemoMode && window.isDemoMode()) {
@@ -304,23 +338,31 @@ async function checkWalletConnection() {
         return;
     }
 
+    // On mobile, wait for ethereum provider (MetaMask/wallets inject it async)
+    if (isMobile() && !window.ethereum) {
+        await waitForEthereumProvider(3000);
+    }
+
     if (window.ethereum) {
         try {
+            console.log('🔗 Ethereum provider found, checking connection...');
             const provider = new ethers.providers.Web3Provider(window.ethereum);
             const accounts = await provider.send("eth_accounts", []);
             if (accounts.length > 0) {
-                console.log("Wallet already connected:", accounts[0]);
+                console.log("✅ Wallet already connected:", accounts[0]);
                 await setupWalletConnection(provider);
             } else {
-                console.log("Wallet not connected, showing connect button.");
+                console.log("📱 Wallet not connected, showing connect button.");
                 renderWalletConnect();
             }
         } catch (error) {
-            console.error("Could not check for existing wallet connection:", error);
+            console.error("❌ Could not check wallet connection:", error);
             renderWalletConnect();
         }
     } else {
-        console.log("No Ethereum wallet detected.");
+        console.log("⚠️ No Ethereum wallet detected (window.ethereum is undefined)");
+        console.log("   User agent:", navigator.userAgent);
+        console.log("   Is mobile:", isMobile());
         renderWalletConnect();
     }
 }
