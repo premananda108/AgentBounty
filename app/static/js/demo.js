@@ -6,13 +6,53 @@
 // Check for demo mode activation
 const isDemoMode = () => {
     const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('demo') === 'true' ||
-           document.cookie.includes('demo_mode=true');
+    const hasDemoParam = urlParams.get('demo') === 'true';
+    const hasDemoCookie = document.cookie.includes('demo_mode=true');
+
+    return hasDemoParam || hasDemoCookie;
+};
+
+// Set demo mode cookie
+const setDemoCookie = () => {
+    // Set cookie for 1 hour
+    const expiresAt = new Date(Date.now() + 3600 * 1000).toUTCString();
+    document.cookie = `demo_mode=true; path=/; expires=${expiresAt}; SameSite=Lax`;
+    console.log('🍪 Demo mode cookie set');
+};
+
+// Check if we need to force reload to activate demo mode
+const checkAndActivateDemoMode = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasDemoParam = urlParams.get('demo') === 'true';
+    const hasDemoCookie = document.cookie.includes('demo_mode=true');
+    const hasReloadFlag = sessionStorage.getItem('demo_reload_attempted');
+
+    // If we have ?demo=true but no cookie and haven't tried reloading yet
+    if (hasDemoParam && !hasDemoCookie && !hasReloadFlag) {
+        console.log('🔄 Setting demo cookie and reloading...');
+        setDemoCookie();
+        sessionStorage.setItem('demo_reload_attempted', 'true');
+        // Force hard reload
+        window.location.reload(true);
+        return false; // Don't continue initialization
+    }
+
+    // Clear reload flag if we're in demo mode
+    if (hasDemoCookie) {
+        sessionStorage.removeItem('demo_reload_attempted');
+    }
+
+    return hasDemoParam || hasDemoCookie;
 };
 
 // Activate demo mode (automatically with ?demo=true)
 const activateDemoMode = () => {
     console.log('🎭 Demo Mode activated');
+
+    // Ensure cookie is set
+    if (!document.cookie.includes('demo_mode=true')) {
+        setDemoCookie();
+    }
 
     // Show the demo banner
     showDemoBanner();
@@ -97,10 +137,11 @@ const exitDemoMode = async () => {
     document.cookie = 'demo_mode=; path=/; max-age=0';
     document.cookie = 'agentbounty_session=; path=/; max-age=0';
 
-    // Clear localStorage
+    // Clear localStorage and sessionStorage
     localStorage.removeItem('demo_mode');
+    sessionStorage.removeItem('demo_reload_attempted');
 
-    // Reload to the main page
+    // Reload to the main page (without ?demo=true)
     window.location.href = '/';
 };
 
@@ -115,18 +156,27 @@ const addDemoWatermark = (element) => {
     element.appendChild(watermark);
 };
 
-// Initialize on page load
-if (isDemoMode()) {
-    // Wait for the DOM to load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', activateDemoMode);
-    } else {
-        activateDemoMode();
+// Initialize on page load with reload check
+const initDemoMode = () => {
+    // Check and potentially reload
+    const shouldActivate = checkAndActivateDemoMode();
+
+    if (shouldActivate && isDemoMode()) {
+        // Wait for the DOM to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', activateDemoMode);
+        } else {
+            activateDemoMode();
+        }
     }
-}
+};
+
+// Start initialization
+initDemoMode();
 
 // Export functions to window for global access
 window.isDemoMode = isDemoMode;
 window.activateDemoMode = activateDemoMode;
 window.exitDemoMode = exitDemoMode;
 window.addDemoWatermark = addDemoWatermark;
+window.setDemoCookie = setDemoCookie;

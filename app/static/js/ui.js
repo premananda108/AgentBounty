@@ -154,6 +154,13 @@ async function connectWallet() {
 }
 
 async function checkWalletConnection() {
+    // Skip wallet connection check in demo mode
+    if (window.isDemoMode && window.isDemoMode()) {
+        console.log('🎭 Demo mode: using demo wallet');
+        renderDemoWallet();
+        return;
+    }
+
     if (window.ethereum) {
         try {
             const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -180,6 +187,31 @@ const renderWalletConnect = () => {
     if (!walletContainer) return;
     walletContainer.innerHTML = `<button id="connect-wallet-button" class="bg-purple-500 text-white px-4 py-2 rounded">Connect Wallet</button>`;
     document.getElementById('connect-wallet-button').addEventListener('click', connectWallet);
+};
+
+const renderDemoWallet = () => {
+    const walletContainer = document.getElementById('wallet-container');
+    if (!walletContainer) return;
+
+    // Demo wallet address from demo_data.py
+    const demoAddress = '0xdE3089c44de71234567890123456789012345678';
+    const demoBalance = '50.25'; // Demo USDC balance
+
+    walletContainer.innerHTML = `
+        <div class="flex items-center gap-2 bg-yellow-50 px-3 py-1 rounded border border-yellow-300">
+            <span class="text-xs">🎭</span>
+            <p class="text-sm text-gray-700">
+                💳 ${demoAddress.substring(0, 6)}...${demoAddress.substring(demoAddress.length - 4)}
+                <span class="text-xs text-gray-500 ml-2">(${demoBalance} USDC)</span>
+            </p>
+        </div>
+    `;
+
+    // Set demo wallet globally (already done in demo.js, but ensure it's set)
+    window.userAddress = demoAddress;
+    window.demoWallet = true;
+
+    console.log('🎭 Demo wallet rendered:', demoAddress);
 };
 
 const renderTaskList = (tasks) => {

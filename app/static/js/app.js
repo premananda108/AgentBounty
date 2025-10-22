@@ -1,8 +1,15 @@
 const initializeApp = async (user) => {
     renderHeader(true, user);
     renderTaskCreator(true);
-    //renderWalletConnect();
-    checkWalletConnection();
+
+    // In demo mode, skip wallet connection check
+    if (window.isDemoMode && window.isDemoMode()) {
+        console.log('🎭 Demo mode: skipping wallet connection check');
+        // Demo wallet is already set in demo.js
+    } else {
+        checkWalletConnection();
+    }
+
     // Load tasks regardless of wallet connection status
     loadTasks();
 };

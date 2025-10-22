@@ -43,7 +43,8 @@ const updateUI = async () => {
     if (isAuthenticated) {
         initializeApp(user);
     } else {
-        renderHeader(false);
+        // Not authenticated - show login/demo options
+        renderHeader(false, null);
         renderTaskCreator(false);
         renderTaskList([]);
         stopTaskUpdates();
