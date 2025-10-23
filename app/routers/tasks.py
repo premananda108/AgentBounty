@@ -175,7 +175,7 @@ async def get_task(
 
     Returns detailed information about a specific task
     """
-    user_id = user.get('sub')
+    user_id = user.get('sub') or user.get('user_id') # 'sub' for session, 'user_id' for M2M profile
 
     task = await task_service.get_task(task_id, user_id)
     if not task:
@@ -202,7 +202,7 @@ async def start_task(
     Use GET /api/tasks/{task_id} to check status.
     Use GET /api/tasks/{task_id}/result to get the result when completed.
     """
-    user_id = user.get('sub')
+    user_id = user.get('sub') or user.get('user_id') # 'sub' for session, 'user_id' for M2M profile
 
     # Verify task exists and belongs to user
     task = await task_service.get_task(task_id, user_id)
@@ -247,7 +247,7 @@ async def get_task_result(
     3. POST /api/payments/authorize → Processes payment
     4. GET /api/tasks/{id}/result → Returns actual result
     """
-    user_id = user.get('sub')
+    user_id = user.get('sub') or user.get('user_id') # 'sub' for session, 'user_id' for M2M profile
     print(f"🔍 DEBUG get_task_result: task_id={task_id}, user_id={user_id}")
 
     # Get wallet address from session or Auth0
@@ -518,7 +518,7 @@ async def m2m_create_task(
     This endpoint is specifically for machine clients (like the old MCP server)
     and requires a valid Bearer token and X-User-ID header.
     """
-    user_id = user.get('sub')
+    user_id = user.get('sub') or user.get('user_id') # 'sub' for session, 'user_id' for M2M profile
     if not user_id:
         raise HTTPException(status_code=400, detail="Could not determine user_id from authentication.")
 
