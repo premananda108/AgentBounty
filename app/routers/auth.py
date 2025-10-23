@@ -151,7 +151,7 @@ def require_mcp_auth(request: Request) -> dict:
             # user_id will be either Auth0 sub or from X-User-ID header
             return {"user_id": user['sub']}
     """
-    from app.config import settings
+
 
     # Check for service token in Authorization header
     auth_header = request.headers.get('Authorization')
@@ -159,8 +159,16 @@ def require_mcp_auth(request: Request) -> dict:
     if auth_header and auth_header.startswith('Bearer '):
         token = auth_header.replace('Bearer ', '')
 
+        # First, ensure the server has a token configured
+        if not settings.MCP_SERVICE_TOKEN:
+            raise ValueError("MCP_SERVICE_TOKEN is not configured on the main application server.")
+
+        # DEBUG: Print tokens to diagnose mismatch
+        print(f"🔍 DEBUG: Received Token: '{token}'")
+        print(f"🔍 DEBUG: Expected Token: '{settings.MCP_SERVICE_TOKEN}'")
+        
         # Verify MCP service token
-        if settings.MCP_SERVICE_TOKEN and token == settings.MCP_SERVICE_TOKEN:
+        if token == settings.MCP_SERVICE_TOKEN:
             # MCP service authenticated
             # Get user_id and user_email from headers (MCP client must provide these)
             user_id = request.headers.get('X-User-ID')

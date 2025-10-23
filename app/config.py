@@ -58,6 +58,8 @@ class Settings(BaseSettings):
 
     # MCP Service-to-Service Authentication
     MCP_SERVICE_TOKEN: str | None = None  # Secret token for MCP clients
+    AGENTBOUNTY_API_URL: str = "http://localhost:8000" # URL of the main app for the MCP server to call
+
 
     model_config = SettingsConfigDict(
         env_file=".env",
