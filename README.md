@@ -2,7 +2,7 @@
 
 **Pay-per-use AI Agent Marketplace with Crypto Payments**
 
-AgentBounty is a decentralized marketplace for AI agents where users pay per task using USDC on Base Sepolia. The platform implements the X402 Payment Protocol with EIP-712 signatures for gasless user transactions and CIBA (Client Initiated Backchannel Authentication) for payment approvals.
+AgentBounty is a decentralized marketplace for AI agents where users pay per task using USDC on Base Sepolia. The platform implements the X402 Payment Protocol with EIP-712 signatures for gasless user transactions and Async Approval for payment approvals.
 
 ---
 
@@ -112,11 +112,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - USDC payments on Base Sepolia
 - Gasless transactions for users
 
-**CIBA Payment Approval:**
+**Async Payment Approval:**
 - Threshold-based approval ($0.002+)
 - Simulated approval for testing
-- Real Auth0 CIBA ready (requires Guardian)
-- Email verification alternative (planned)
+- Email-based verification flow
+- Extensible for other async methods (e.g., push notifications)
 
 ### ✅ Task Management
 
@@ -154,13 +154,13 @@ AgentBounty/
 │   │   ├── auth.py         # Auth0 OAuth flow
 │   │   ├── wallet.py       # Wallet connection
 │   │   ├── tasks.py        # Task management + X402
-│   │   └── payments.py     # Payment processing + CIBA
+│   │   └── payments.py     # Payment processing
 │   │
 │   ├── services/           # Business Logic
 │   │   ├── auth0_service.py    # Auth0 Management API (with caching)
 │   │   ├── task_service.py     # Task execution
 │   │   ├── payment_service.py  # X402 + EIP-712
-│   │   └── ciba_service.py     # CIBA approval flow
+│   │   └── async_approval_service.py     # Async approval flow
 │   │
 │   ├── utils/              # Utilities
 │   │   └── db.py           # SQLite schema & migrations
@@ -223,47 +223,34 @@ HOST=0.0.0.0
 PORT=8000
 DEBUG=False
 
-# Payment & CIBA
-CIBA_THRESHOLD_USD=0.002
-ENABLE_REAL_CIBA=false  # Set to true for production with Guardian
+# Payment & Approval
+APPROVAL_THRESHOLD_USD=0.002
 ```
 
 ---
 
-## 💳 CIBA Payment Approval
+## 💳 Async Payment Approval
 
 ### How It Works
 
-For payments **>= $0.002**, users must approve the transaction:
+For payments **>= $0.002**, users must approve the transaction via an email link:
 
-**Testing Mode (ENABLE_REAL_CIBA=false):**
-1. User completes task
-2. Clicks "View Result"
-3. Sees CIBA approval screen
-4. Clicks **"Simulate Approval"** button
-5. Payment modal appears
-6. Signs EIP-712 transaction
-7. Receives result
+**Approval Flow:**
+1. User completes a task and clicks "View Result".
+2. If the cost is above the threshold, the UI will show an "Awaiting Approval" status.
+3. An approval email is sent to the user's registered address.
+4. User clicks the **"Approve Payment"** link in the email.
+5. The UI automatically detects the approval and presents the final payment modal.
+6. User signs the EIP-712 transaction to release the result.
 
-**Production Mode (ENABLE_REAL_CIBA=true):**
-- Requires Auth0 Guardian app
-- User receives push notification
-- Approves on phone
-- Payment proceeds automatically
-
-**Future: Email Mode:**
-- Email with approval link (planned)
-- No app installation required
-- Best for general users
+**Testing:**
+- In the default setup, the approval email is simulated. You can configure a real SMTP service for production.
 
 ### Configuration
 
 ```bash
-# Threshold for requiring CIBA approval
-CIBA_THRESHOLD_USD=0.002
-
-# Enable/disable real CIBA (vs simulation)
-ENABLE_REAL_CIBA=false
+# Threshold for requiring async approval
+APPROVAL_THRESHOLD_USD=0.002
 ```
 
 ---
@@ -280,7 +267,7 @@ ENABLE_REAL_CIBA=false
 - ✅ EIP-712 signature verification
 - ✅ Nonce validation
 - ✅ Timestamp validation (1 hour window)
-- ✅ CIBA approval for large payments
+- ✅ Async approval for large payments
 - ✅ User-specific wallet linking
 
 ### API Security
@@ -300,14 +287,14 @@ ENABLE_REAL_CIBA=false
 - input_data, output_data
 - estimated_cost, actual_cost
 - payment_status, payment_tx_hash
-- ciba_request_id, progress_message
+- approval_request_id, progress_message
 - created_at, started_at, completed_at
 
 **task_results**
 - id, task_id, result_type, content
 - storage_path, created_at
 
-**ciba_requests**
+**approval_requests**
 - id, task_id, user_id, auth_req_id
 - status, amount
 - created_at, expires_at, approved_at
@@ -333,8 +320,8 @@ curl -X POST http://localhost:8000/api/tasks/ \
 
 ### Test Payment Flow
 
-1. Create task (< $0.002) → No CIBA
-2. Create task (>= $0.002) → CIBA required
+1. Create task (< $0.002) → No approval needed
+2. Create task (>= $0.002) → Approval required
 3. Simulate approval
 4. Sign EIP-712 transaction
 5. Verify result access
@@ -373,8 +360,8 @@ GET  /api/tasks/{id}/result   # Get result (X402)
 
 ```
 POST /api/payments/authorize              # Process payment
-GET  /api/payments/ciba/status/{id}       # Check CIBA status
-POST /api/payments/ciba/simulate/{id}     # Simulate approval (testing)
+GET  /api/payments/approval/status/{id}   # Check approval status
+POST /api/payments/approval/simulate/{id} # Simulate approval (testing)
 ```
 
 ---
@@ -386,7 +373,7 @@ POST /api/payments/ciba/simulate/{id}     # Simulate approval (testing)
 - [ ] Set `DEBUG=false`
 - [ ] Use production database path
 - [ ] Configure real SMTP for emails
-- [ ] Set up Auth0 Guardian (if using CIBA)
+- [ ] Configure real SMTP for approval emails
 - [ ] Deploy to secure HTTPS endpoint
 - [ ] Configure CORS for production domain
 - [ ] Set strong `SECRET_KEY`
@@ -398,9 +385,9 @@ POST /api/payments/ciba/simulate/{id}     # Simulate approval (testing)
 ## 📝 Changelog
 
 ### v0.5.0 (Current)
-- ✅ CIBA payment approval flow
+- ✅ Async payment approval flow
 - ✅ Threshold-based approval ($0.002+)
-- ✅ Simulated CIBA for testing
+- ✅ Simulated async approval for testing
 - ✅ Auth0 API caching (fixes 429 errors)
 - ✅ User profile caching (5 min)
 - ✅ Management token caching (23 hours)
