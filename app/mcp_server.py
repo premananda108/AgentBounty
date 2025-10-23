@@ -1,17 +1,9 @@
 """
-MCP Server for AgentBounty
-
-Exposes AgentBounty agents as MCP tools.
+Standalone MCP Server for AgentBounty
 """
-
-import functools
+import sys
 from mcp.server.fastmcp import FastMCP, Context
-from app.config import settings
-from app.services.task_service import get_task_service, TaskService
 from app.agents.registry import get_agent
-
-# --- Constants ---
-MCP_USER_ID = "mcp-service-user"
 
 # --- MCP Server Setup ---
 mcp_server = FastMCP(
@@ -20,20 +12,8 @@ mcp_server = FastMCP(
 You can use the available tools to perform tasks like fact-checking and travel planning."""
 )
 
-# --- Authentication ---
-def require_api_key(func):
-    """Decorator to protect tools with API key authentication."""
-    @functools.wraps(func)
-    async def wrapper(ctx: Context, *args, **kwargs):
-        api_key = ctx.get_header("X-API-Key")
-        if not api_key or api_key != settings.MCP_SERVICE_TOKEN:
-            raise PermissionError("Invalid or missing API key.")
-        return await func(ctx, *args, **kwargs)
-    return wrapper
-
 # --- Tool Implementations ---
 @mcp_server.tool()
-@require_api_key
 async def fact_check(ctx: Context, url: str = None, text: str = None) -> str:
     """
     Performs a fact-check on a given URL or text.
@@ -50,19 +30,13 @@ async def fact_check(ctx: Context, url: str = None, text: str = None) -> str:
 
     input_data = {"mode": "url" if url else "text", "url": url, "text": text}
 
-    task_service = get_task_service()
-    task = await task_service.create_task(
-        user_id=MCP_USER_ID,
-        agent_type="factcheck",
-        input_data=input_data
-    )
-
-    result = await task_service.execute_task(task['id'], MCP_USER_ID)
-    return result['output_data']['output']
+    agent = get_agent("factcheck")
+    # Assuming agent.run returns a dict like {'output': '...'}
+    result = await agent.run(input_data)
+    return result['output']
 
 
 @mcp_server.tool()
-@require_api_key
 async def plan_travel(ctx: Context, message: str) -> str:
     """
     Creates a travel plan based on a natural language message.
@@ -78,16 +52,21 @@ async def plan_travel(ctx: Context, message: str) -> str:
 
     input_data = {"message": message}
 
-    task_service = get_task_service()
-    task = await task_service.create_task(
-        user_id=MCP_USER_ID,
-        agent_type="travel_planner",
-        input_data=input_data
-    )
+    agent = get_agent("travel_planner")
+    result = await agent.run(input_data)
+    return result['output']
 
-    result = await task_service.execute_task(task['id'], MCP_USER_ID)
-    return result['output_data']['output']
+# --- Server Runner ---
+if __name__ == "__main__":
+    # Можно указать порт из аргументов командной строки
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8001
 
-# Expose the server's router for inclusion in the main app
-_mcp_app = mcp_server.streamable_http_app()
-mcp_router = _mcp_app.router
+    print(f"🚀 Starting Standalone AgentBounty MCP server on port {port}...")
+    print(f"📍 URL: http://localhost:{port}/mcp")
+    print("📝 Press Ctrl+C to stop")
+
+    # Настройка порта
+    mcp_server.settings.port = port
+
+    # Запуск
+    mcp_server.run(transport="streamable-http")

@@ -23,7 +23,9 @@ from app.demo_middleware import DemoModeMiddleware
 
 
 import aiosqlite
-from app.mcp_server import MCP_USER_ID
+
+# --- Constants ---
+MCP_USER_ID = "mcp-service-user"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -90,14 +92,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.mcp_server import mcp_router
-
 # Include routers
 app.include_router(auth.router)
 app.include_router(wallet.router)
 app.include_router(tasks.router)
 app.include_router(payments.router)
-app.include_router(mcp_router, prefix="/mcp")
 
 
 # Health check endpoint
@@ -143,9 +142,7 @@ async def get_me(request: Request):
     }
 
 
-# Mount static files to be served by the backend
-# This is a change from the previous architecture where the frontend was a separate Next.js app.
-# IMPORTANT: This must come AFTER all other API routes
+# IMPORTANT: This static files mount must come AFTER all other API routes
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")
 
 
