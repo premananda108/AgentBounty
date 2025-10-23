@@ -301,6 +301,28 @@ async def get_task_result(
         return result
 
     if payment_status != 'paid':
+        # Check if this is an M2M client
+        is_m2m_client = user.get('mcp_service', False)
+
+        if is_m2m_client:
+            # M2M client requests a paid result. Initiate email payment flow.
+            approval_request_id = task.get('ciba_request_id') # Using old name for compatibility
+            if not approval_request_id:
+                await async_approval_service.initiate_payment_approval(
+                    task_id=task_id,
+                    user_id=user_id,
+                    amount=actual_cost,
+                    task_description=f"Pay for '{task['agent_type']}' task result"
+                )
+                # Note: The service now needs to update the task with the request_id itself.
+            
+            return {
+                "status": "payment_link_sent",
+                "message": "A link to complete the payment has been sent to the user's email.",
+                "task_id": task_id,
+                "amount": actual_cost
+            }
+
         print(f"🔍 DEBUG get_task_result: Task not paid, checking wallet")
         # Check if user has wallet connected (required for payment)
         if not user_address:

@@ -137,66 +137,124 @@ def require_auth(request: Request) -> dict:
     return user
 
 
-def require_mcp_auth(request: Request) -> dict:
-    """
-    Dependency for MCP service-to-service authentication
+async def require_mcp_auth(request: Request) -> dict:
 
-    Supports two authentication methods:
-    1. Session-based (regular Auth0 user)
-    2. Service token (MCP clients)
 
-    Usage:
-        @router.post("/api/tasks")
-        async def create_task(user=Depends(require_mcp_auth)):
-            # user_id will be either Auth0 sub or from X-User-ID header
-            return {"user_id": user['sub']}
     """
+
+
+    Dependency for MCP service-to-service authentication.
+
+
+    Now validates that the user from X-User-ID exists in Auth0.
+
+
+    """
+
+
+    from app.services.auth0_service import Auth0Service
+
+
+
 
 
     # Check for service token in Authorization header
+
+
     auth_header = request.headers.get('Authorization')
 
+
+
+
+
     if auth_header and auth_header.startswith('Bearer '):
+
+
         token = auth_header.replace('Bearer ', '')
 
-        # First, ensure the server has a token configured
+
+
+
+
         if not settings.MCP_SERVICE_TOKEN:
+
+
             raise ValueError("MCP_SERVICE_TOKEN is not configured on the main application server.")
 
-        # DEBUG: Print tokens to diagnose mismatch
-        print(f"🔍 DEBUG: Received Token: '{token}'")
-        print(f"🔍 DEBUG: Expected Token: '{settings.MCP_SERVICE_TOKEN}'")
-        
-        # Verify MCP service token
+
+
+
+
         if token == settings.MCP_SERVICE_TOKEN:
-            # MCP service authenticated
-            # Get user_id and user_email from headers (MCP client must provide these)
+
+
             user_id = request.headers.get('X-User-ID')
-            user_email = request.headers.get('X-User-Email')
-            user_name = request.headers.get('X-User-Name', 'MCP User')
+
 
             if not user_id:
-                raise HTTPException(
-                    status_code=400,
-                    detail="X-User-ID header required for MCP authentication"
-                )
 
-            # Return user dict compatible with Auth0 structure
-            return {
-                'sub': user_id,
-                'email': user_email,
-                'name': user_name,
-                'mcp_service': True  # Flag to indicate this is MCP auth
-            }
+
+                raise HTTPException(status_code=400, detail="X-User-ID header required for MCP authentication")
+
+
+
+
+
+            # Verify user exists in Auth0
+
+
+            auth0_service = Auth0Service()
+
+
+            user_profile = await auth0_service.get_user_profile(user_id)
+
+
+            if not user_profile:
+
+
+                raise HTTPException(status_code=404, detail=f"User with ID '{user_id}' not found in Auth0.")
+
+
+
+
+
+            # Return a structure compatible with Auth0 user info, plus our flag
+
+
+            user_profile['mcp_service'] = True
+
+
+            return user_profile
+
+
+
+
 
     # Fall back to regular session-based auth
+
+
     user = request.session.get('user')
 
+
     if not user:
+
+
         raise HTTPException(
+
+
             status_code=401,
+
+
             detail="Authentication required (session or MCP service token)",
+
+
             headers={"WWW-Authenticate": "Bearer"}
+
+
         )
+
+
+
+
 
     return user
