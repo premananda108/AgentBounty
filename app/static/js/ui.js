@@ -813,7 +813,7 @@ const showCreateTaskModal = (agentType, agentInfo) => {
             color: '#14b8a6',
             modes: ['text'],
             placeholder: {
-                text: 'Example: "Find flights and hotels from New York to Miami, November 2-5, 2025, for 2 travelers"'
+                text: 'Example: &quotFind flights and hotels from New York to Miami, November 2-5, 2025, for 2 travelers&quot'
             },
             examples: [
                 'Weekend getaway to Paris',

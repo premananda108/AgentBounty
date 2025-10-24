@@ -20,6 +20,7 @@ from app.routers import tasks
 from app.routers import payments
 from app.agents.registry import list_agents
 from app.demo_middleware import DemoModeMiddleware
+from app.core.mcp_client import mcp_client_instance
 
 
 import aiosqlite
@@ -33,6 +34,9 @@ async def lifespan(app: FastAPI):
     # Startup
     print("\n🚀 AgentBounty starting up...")
     print(f"📍 Environment: {'Development' if settings.DEBUG else 'Production'}")
+
+    # Start the global MCP client
+    await mcp_client_instance.startup()
 
     # Initialize database
     await init_db()
@@ -59,6 +63,8 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     print("\n👋 AgentBounty shutting down...")
+    # Stop the global MCP client
+    await mcp_client_instance.shutdown()
 
 
 # Create FastAPI app

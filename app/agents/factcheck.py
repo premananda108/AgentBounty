@@ -58,17 +58,20 @@ class FactCheckAgent(BaseAgent):
         """
         Execute fact-checking pipeline with real Gemini + MCP integration
         """
+        from app.core.mcp_client import get_mcp_client
+
         gemini_client = GeminiClient(api_key=settings.GEMINI_API_KEY)
+        mcp_client = get_mcp_client() # Get the singleton instance
         mode = task.input_data.get('mode', 'text')
 
-        # Use async with for proper MCP client lifecycle management
-        async with MCPClient(api_key=settings.BRIGHT_DATA_API_KEY) as mcp_client:
-            if mode == 'url':
-                url = task.input_data['url'].strip()
-                result_dict = await self._factcheck_url(url, gemini_client, mcp_client)
-            else:
-                text = task.input_data['text'].strip()
-                result_dict = await self._factcheck_text(text, gemini_client, mcp_client)
+        if mode == 'url':
+            url = task.input_data['url'].strip()
+            # Pass the client instance to the method
+            result_dict = await self._factcheck_url(url, gemini_client, mcp_client if mcp_client.is_enabled() else None)
+        else:
+            text = task.input_data['text'].strip()
+            # Pass the client instance to the method
+            result_dict = await self._factcheck_text(text, gemini_client, mcp_client if mcp_client.is_enabled() else None)
 
         # Convert to AgentResult
         return AgentResult(
