@@ -799,7 +799,7 @@ const showCreateTaskModal = (agentType, agentInfo) => {
             color: '#8b5cf6',
             modes: ['text', 'url'],
             placeholder: {
-                text: 'Example: "The new iPhone has 10TB of storage and costs only $99"',
+                text: 'e.g., &quot;The new iPhone has 10TB of storage and costs only $99&quot;',
                 url: 'https://tiktok.com/@user/video/...'
             },
             examples: [
