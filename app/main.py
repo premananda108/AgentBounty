@@ -20,7 +20,13 @@ from app.routers import tasks
 from app.routers import payments
 from app.agents.registry import list_agents
 from app.demo_middleware import DemoModeMiddleware
+from app.core.mcp_client import mcp_client_instance
 
+
+import aiosqlite
+
+# --- Constants ---
+MCP_USER_ID = "mcp-service-user"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,8 +35,20 @@ async def lifespan(app: FastAPI):
     print("\n🚀 AgentBounty starting up...")
     print(f"📍 Environment: {'Development' if settings.DEBUG else 'Production'}")
 
+    # Start the global MCP client
+    await mcp_client_instance.startup()
+
     # Initialize database
     await init_db()
+
+    # Ensure MCP service user exists
+    async with aiosqlite.connect(settings.DATABASE_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO users (id) VALUES (?)",
+            (MCP_USER_ID,)
+        )
+        await db.commit()
+    print(f"✅ Ensured MCP service user '{MCP_USER_ID}' exists")
 
     # Check database health
     healthy = await check_db_health()
@@ -45,6 +63,8 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     print("\n👋 AgentBounty shutting down...")
+    # Stop the global MCP client
+    await mcp_client_instance.shutdown()
 
 
 # Create FastAPI app
@@ -128,9 +148,7 @@ async def get_me(request: Request):
     }
 
 
-# Mount static files to be served by the backend
-# This is a change from the previous architecture where the frontend was a separate Next.js app.
-# IMPORTANT: This must come AFTER all other API routes
+# IMPORTANT: This static files mount must come AFTER all other API routes
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")
 
 

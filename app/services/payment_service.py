@@ -67,11 +67,11 @@ class PaymentService:
 
             self.w3 = Web3(Web3.HTTPProvider(settings.BASE_RPC_URL))
 
-            # Check connection
+            # Check connection, but don't fail hard on initialization
             if not self.w3.is_connected():
-                raise Exception(f"Failed to connect to RPC at {settings.BASE_RPC_URL}")
-
-            print(f"✅ Connected to Base RPC (Chain ID: {self.w3.eth.chain_id})")
+                print(f"⚠️ WARNING: Could not connect to RPC at {settings.BASE_RPC_URL}. Payment functions will fail.")
+            else:
+                print(f"✅ Connected to Base RPC (Chain ID: {self.w3.eth.chain_id})")
 
             self.usdc_address = Web3.to_checksum_address(settings.USDC_CONTRACT_ADDRESS)
             self.server_address = Web3.to_checksum_address(settings.SERVER_WALLET_ADDRESS)

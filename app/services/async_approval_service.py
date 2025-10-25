@@ -114,6 +114,18 @@ class AsyncApprovalService:
                 )
                 await db.commit()
 
+            # Also, link this request in the task itself to prevent re-sending emails
+            async with aiosqlite.connect(self.db_path) as db:
+                await db.execute(
+                    """
+                    UPDATE tasks
+                    SET ciba_request_id = ?
+                    WHERE id = ?
+                    """,
+                    (ciba_request_id, task_id)
+                )
+                await db.commit()
+
             return {
                 "ciba_request_id": ciba_request_id,  # Keep for backward compatibility
                 "approval_request_id": ciba_request_id,

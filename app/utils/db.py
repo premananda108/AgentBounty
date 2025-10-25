@@ -7,10 +7,17 @@ from app.config import settings
 
 # Database schema
 SCHEMA = """
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
 -- Tasks table
 CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id),
     agent_type TEXT NOT NULL,
     status TEXT NOT NULL,
     input_data TEXT NOT NULL,

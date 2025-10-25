@@ -33,7 +33,15 @@ const renderHeader = (isAuthenticated, user) => {
                     <div class="flex items-center gap-4" id="auth-container">
                         ${isAuthenticated ? `
                             <div id="user-profile" class="flex items-center gap-4">
-                                <span class="text-sm text-gray-600">${user.email}</span>
+                                <div class="text-right">
+                                    <span class="text-sm text-gray-600">${user.email}</span>
+                                    <div class="flex items-center justify-end gap-2 mt-1 cursor-pointer" id="user-id-container" title="Copy User ID">
+                                        <code class="text-xs text-gray-500 bg-gray-100 px-1 py-0.5 rounded" id="user-id-display">${user.sub}</code>
+                                        <div id="copy-icon-container">
+                                            <svg class="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div id="wallet-container"></div>
                             </div>
                             <button id="logout-button" class="bg-red-500 text-white px-4 py-2 rounded">Log Out</button>
@@ -53,6 +61,21 @@ const renderHeader = (isAuthenticated, user) => {
 
     if (isAuthenticated) {
         document.getElementById('logout-button').addEventListener('click', logout);
+        
+        const userIdContainer = document.getElementById('user-id-container');
+        if (userIdContainer) {
+            userIdContainer.addEventListener('click', () => {
+                const userId = document.getElementById('user-id-display').innerText;
+                navigator.clipboard.writeText(userId).then(() => {
+                    const iconContainer = document.getElementById('copy-icon-container');
+                    const originalIcon = iconContainer.innerHTML;
+                    iconContainer.innerHTML = `<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                    setTimeout(() => {
+                        iconContainer.innerHTML = originalIcon;
+                    }, 2000);
+                });
+            });
+        }
     } else {
         document.getElementById('login-button').addEventListener('click', login);
     }
@@ -776,7 +799,7 @@ const showCreateTaskModal = (agentType, agentInfo) => {
             color: '#8b5cf6',
             modes: ['text', 'url'],
             placeholder: {
-                text: 'Example: "The new iPhone has 10TB of storage and costs only $99"',
+                text: 'e.g., &quot;The new iPhone has 10TB of storage and costs only $99&quot;',
                 url: 'https://tiktok.com/@user/video/...'
             },
             examples: [
@@ -790,7 +813,7 @@ const showCreateTaskModal = (agentType, agentInfo) => {
             color: '#14b8a6',
             modes: ['text'],
             placeholder: {
-                text: 'Example: "Find flights and hotels from New York to Miami, November 2-5, 2025, for 2 travelers"'
+                text: 'Example: &quotFind flights and hotels from New York to Miami, November 2-5, 2025, for 2 travelers&quot'
             },
             examples: [
                 'Weekend getaway to Paris',

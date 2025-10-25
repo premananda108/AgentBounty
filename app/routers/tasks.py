@@ -165,7 +165,7 @@ async def list_tasks(
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: str,
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_mcp_auth),
     task_service: TaskService = Depends(get_task_service)
 ):
     """
@@ -175,7 +175,7 @@ async def get_task(
 
     Returns detailed information about a specific task
     """
-    user_id = user.get('sub')
+    user_id = user.get('sub') or user.get('user_id') # 'sub' for session, 'user_id' for M2M profile
 
     task = await task_service.get_task(task_id, user_id)
     if not task:
@@ -188,7 +188,7 @@ async def get_task(
 async def start_task(
     task_id: str,
     background_tasks: BackgroundTasks,
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_mcp_auth),
     task_service: TaskService = Depends(get_task_service)
 ):
     """
@@ -202,7 +202,7 @@ async def start_task(
     Use GET /api/tasks/{task_id} to check status.
     Use GET /api/tasks/{task_id}/result to get the result when completed.
     """
-    user_id = user.get('sub')
+    user_id = user.get('sub') or user.get('user_id') # 'sub' for session, 'user_id' for M2M profile
 
     # Verify task exists and belongs to user
     task = await task_service.get_task(task_id, user_id)
@@ -227,7 +227,7 @@ async def get_task_result(
     task_id: str,
     response: Response,
     request_obj: Request,
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_mcp_auth),
     task_service: TaskService = Depends(get_task_service),
     payment_service: PaymentService = Depends(get_payment_service),
     async_approval_service: AsyncApprovalService = Depends(get_async_approval_service)
@@ -247,7 +247,7 @@ async def get_task_result(
     3. POST /api/payments/authorize → Processes payment
     4. GET /api/tasks/{id}/result → Returns actual result
     """
-    user_id = user.get('sub')
+    user_id = user.get('sub') or user.get('user_id') # 'sub' for session, 'user_id' for M2M profile
     print(f"🔍 DEBUG get_task_result: task_id={task_id}, user_id={user_id}")
 
     # Get wallet address from session or Auth0
@@ -301,6 +301,28 @@ async def get_task_result(
         return result
 
     if payment_status != 'paid':
+        # Check if this is an M2M client
+        is_m2m_client = user.get('mcp_service', False)
+
+        if is_m2m_client:
+            # M2M client requests a paid result. Initiate email payment flow.
+            approval_request_id = task.get('ciba_request_id') # Using old name for compatibility
+            if not approval_request_id:
+                await async_approval_service.initiate_payment_approval(
+                    task_id=task_id,
+                    user_id=user_id,
+                    amount=actual_cost,
+                    task_description=f"Pay for '{task['agent_type']}' task result"
+                )
+                # Note: The service now needs to update the task with the request_id itself.
+            
+            return {
+                "status": "payment_link_sent",
+                "message": "A link to complete the payment has been sent to the user's email.",
+                "task_id": task_id,
+                "amount": actual_cost
+            }
+
         print(f"🔍 DEBUG get_task_result: Task not paid, checking wallet")
         # Check if user has wallet connected (required for payment)
         if not user_address:
@@ -475,3 +497,39 @@ async def delete_task(
 
     # TODO: Implement task deletion in TaskService
     raise HTTPException(status_code=501, detail="Task deletion not yet implemented")
+
+
+# --- M2M Endpoint ---
+
+class M2MCreateTaskRequest(BaseModel):
+    """Request model for M2M task creation, mirrors MCP tool arguments"""
+    agent_type: str
+    input_data: Dict
+
+@router.post("/m2m/create", response_model=TaskResponse, status_code=201)
+async def m2m_create_task(
+    data: M2MCreateTaskRequest,
+    user: dict = Depends(require_mcp_auth),
+    task_service: TaskService = Depends(get_task_service)
+):
+    """
+    Create a new task via M2M authentication.
+
+    This endpoint is specifically for machine clients (like the old MCP server)
+    and requires a valid Bearer token and X-User-ID header.
+    """
+    user_id = user.get('sub') or user.get('user_id') # 'sub' for session, 'user_id' for M2M profile
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Could not determine user_id from authentication.")
+
+    try:
+        task = await task_service.create_task(
+            user_id=user_id,
+            agent_type=data.agent_type,
+            input_data=data.input_data
+        )
+        return TaskResponse(**task)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create task: {str(e)}")
