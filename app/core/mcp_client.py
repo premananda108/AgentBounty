@@ -35,12 +35,12 @@ class MCPClient:
 
         print("MCPClient: Starting up (StreamableHTTP)...")
         try:
-            # --- Start Debug Logging ---
-            # Enable detailed logging for httpx to see raw requests/responses
-            logging.basicConfig(level=logging.DEBUG)
-            httpx_logger = logging.getLogger("httpx")
-            httpx_logger.setLevel(logging.DEBUG)
-            print("--- HTTPX DEBUG LOGGING ENABLED ---")
+            # --- Debug Logging (can be enabled if needed) ---
+            # import logging
+            # logging.basicConfig(level=logging.DEBUG)
+            # httpx_logger = logging.getLogger("httpx")
+            # httpx_logger.setLevel(logging.DEBUG)
+            # print("--- HTTPX DEBUG LOGGING ENABLED ---")
             # --- End Debug Logging ---
 
             self._http_context = streamablehttp_client(
