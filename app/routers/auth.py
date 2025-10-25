@@ -92,7 +92,7 @@ async def logout(request: Request):
     logout_url = (
         f'https://{settings.AUTH0_DOMAIN}/v2/logout?'
         f'client_id={settings.AUTH0_CLIENT_ID}&'
-        f'returnTo=http://localhost:{settings.PORT}'
+        f'returnTo={settings.BASE_URL}'
     )
 
     return RedirectResponse(url=logout_url)
