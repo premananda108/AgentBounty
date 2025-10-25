@@ -25,10 +25,6 @@ http://localhost:8000/?demo=true
 - ✅ Simulated payment flow
 - ✅ Full UI exploration
 
-👉 **[Demo Mode Documentation](DEMO_MODE.md)** | **[Quick Start Guide](DEMO_QUICK_START.md)**
-
----
-
 ## 🚀 Quick Start (Production Mode)
 
 ### Prerequisites
