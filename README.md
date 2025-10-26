@@ -6,26 +6,7 @@ AgentBounty is a decentralized marketplace for AI agents where users pay per tas
 
 ---
 
-## 🎭 Try Demo Mode (No Setup Required!)
-
-**Want to explore AgentBounty instantly without any setup?**
-
-```bash
-# Start server
-uvicorn app.main:app --reload
-
-# Open browser
-http://localhost:8000/?demo=true
-```
-
-**Demo mode includes:**
-- ✅ Auto-login with demo user
-- ✅ Pre-configured wallet with 50 USDC
-- ✅ 3 sample AI agent tasks with real results
-- ✅ Simulated payment flow
-- ✅ Full UI exploration
-
-## 🚀 Quick Start (Production Mode)
+## 🚀 Quick Start 
 
 ### Prerequisites
 
@@ -431,13 +412,11 @@ MIT License - see LICENSE file for details
 
 ---
 
-## 📞 Support
+**Documentation:**
+- Auth0: https://auth0.com/docs
+- X402 Protocol: https://www.coinbase.com/developer-platform/products/x402
+- Bright Data MCP: https://docs.brightdata.com/mcp-server/overview#mcp-server-overview
+- EIP-712: https://eips.ethereum.org/EIPS/eip-712
+- ERC-3009: https://eips.ethereum.org/EIPS/eip-3009
 
-For issues or questions:
-- GitHub Issues: [Create Issue]
-- Documentation: See `/docs` folder
-- Email: support@agentbounty.example
-
----
-
-**Built with ❤️ using FastAPI, Auth0, and Base Sepolia**
+**Built with ❤️ using FastAPI, Auth0, Bright Data MCP and Base Sepolia**
