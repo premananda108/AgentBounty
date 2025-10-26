@@ -421,4 +421,6 @@ MIT License - see LICENSE file for details
 - EIP-712: https://eips.ethereum.org/EIPS/eip-712
 - ERC-3009: https://eips.ethereum.org/EIPS/eip-3009
 
+---
+
 **Built with ❤️ using FastAPI, Auth0, Bright Data MCP and Base Sepolia**
