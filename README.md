@@ -1,4 +1,4 @@
-![Screenshot 2025-10-22 at 15.32.36.png](assets/Screenshot%202025-10-22%20at%2015.32.36.png)
+![Screenshot 2025-10-22 at 15.35.10.png](assets/Screenshot%202025-10-22%20at%2015.35.10.png)
 
 # AgentBounty
 
